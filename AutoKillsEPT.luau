@@ -2,8 +2,10 @@ local players = game:GetService("Players")
 local player = players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-if game.GameId ~= 10253248401 then
-	player:Kick("Jogo sem suporte")
+-- Caso o jogo seja outro
+if game.PlaceId ~= 10253248401 and game.GameId ~= 10253248401 then
+	player:Kick("Este script não suporta este jogo.")
+	return
 end
 
 -- Carregando a Interface Rayfield
