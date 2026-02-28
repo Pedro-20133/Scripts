@@ -199,7 +199,7 @@ local TpOnCenterButton = PvpTab:CreateButton({
 	Name = "Tp on Center",
 	Callback = function()
 		-- CORREÇÃO: Pegar o Personagem e a HRP dentro do Callback
-		local char = player.Character
+		local char = player.Character or player.CharacterAdded:Wait()
 		local myHRP = char and char:FindFirstChild("HumanoidRootPart")
 		local centerPart = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Center")
 
@@ -217,7 +217,70 @@ local TpOnCenterButton = PvpTab:CreateButton({
 -- ==========================================
 local FarmTab = Window:CreateTab("Farm Tab", nil)
 
-local FarmLabel = FarmTab:CreateLabel("Configurações de Farm")
+local AutoTycoonLabel = FarmTab:CreateLabel("Auto Tycoon")
+
+local MoneyPlayerLabel = FarmTab:CreateLabel("Seu Dinheiro: $0")
+local MoneyTycoonLabel = FarmTab:CreateLabel("No Coletor: $0")
+
+_G.DinheiroNoPlayer = 0
+_G.DinheiroNoColetor = 0
+
+-- Função para limpar o texto "$135" e retornar número
+local function limparValor(texto)
+	local apenasNumeros = texto:gsub("%D", "") 
+	return tonumber(apenasNumeros) or 0
+end
+
+-- Loop de Atualização em Tempo Real
+task.spawn(function()
+	while true do
+		pcall(function()
+			-- 1. Obtendo Dinheiro do Jogador (leaderstats)
+			local stats = player:FindFirstChild("leaderstats")
+			local moneyObj = stats and stats:FindFirstChild("Money")
+			if moneyObj then
+				_G.DinheiroNoPlayer = moneyObj.Value
+				MoneyPlayerLabel:Set("Seu Dinheiro: $" .. _G.DinheiroNoPlayer)
+			end
+
+			-- 2. Obtendo Dinheiro do Tycoon (Coletor)
+			local tycoon = workspace.Tycoons:FindFirstChild(player.Name)
+			if tycoon then
+				local textLabel = tycoon.Auxiliary.Collector.Screen.SurfaceGui.TextLabel
+				_G.DinheiroNoColetor = limparValor(textLabel.Text)
+				MoneyTycoonLabel:Set("No Coletor: " .. textLabel.Text)
+			end
+		end)
+		task.wait(0.5) -- Atualiza a cada meio segundo para ser eficiente
+	end
+end)
+
+local AutoColectMoney = FarmTab:CreateToggle({
+	Name = "Auto Colect Money",
+	CurrentValue = false,
+	Flag = "AutoColectMoney", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+	Callback = function(Value)
+		local char = player.Character or player.CharacterAdded:Wait()
+		local myHRP = char and char:FindFirstChild("HumanoidRootPart")
+		
+		local ColectorCFrame1 = workspace.Tycoons.Pedro_HLQ.Auxiliary.Collector.Parts.Part.CFrame * CFrame.new(10, 0, 0)
+		local ColectorCFrame2 = workspace.Tycoons.Pedro_HLQ.Auxiliary.Collector.Parts.Part.CFrame
+		
+		while Value do
+			HRP.CFrame = ColectorCFrame1
+			task.wait(0.1)
+			HRP.CFrame = ColectorCFrame2
+			task.wait(0.1)
+		end
+	end,
+})
+
+local AutoTycoonButton = FarmTab:CreateButton({
+	Name = "Auto Tycoon",
+	Callback = function()
+		
+	end,
+})
 
 -- ==========================================
 -- TAB MORE
