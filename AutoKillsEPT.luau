@@ -2,15 +2,19 @@ local players = game:GetService("Players")
 local player = players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+if game.GameId ~= 10253248401 then
+	player:Kick("Jogo sem suporte")
+end
+
 -- Carregando a Interface Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-	Name = "Auto Kills EPT",
+	Name = "Script for EPT",
 	Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
 	LoadingTitle = "Interface Suite",
 	LoadingSubtitle = "by Sirius",
-	ShowText = "Auto Kills EPT", -- for mobile users to unhide Rayfield, change if you'd like
+	ShowText = "Script for EPT", -- for mobile users to unhide Rayfield, change if you'd like
 	Theme = "Ocean", -- Check https://docs.sirius.menu/rayfield/configuration/themes
 
 	ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
