@@ -13,203 +13,99 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
 	Name = "Script for EPT",
-	Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+	Icon = 0,
 	LoadingTitle = "Interface Suite",
 	LoadingSubtitle = "by Sirius",
-	ShowText = "Script for EPT", -- for mobile users to unhide Rayfield, change if you'd like
-	Theme = "Ocean", -- Check https://docs.sirius.menu/rayfield/configuration/themes
-
-	ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
-
-	DisableRayfieldPrompts = false,
-	DisableBuildWarnings = false, -- Prevents Rayfield from emitting warnings when the script has a version mismatch with the interface.
-
+	Theme = "Ocean",
+	ToggleUIKeybind = Enum.KeyCode.K,
 	ConfigurationSaving = {
 		Enabled = true,
-		FolderName = nil, -- Create a custom folder for your hub/game
+		FolderName = "EPT_Scripts",
 		FileName = "AutoKillsEPT"
-	},
-
-	Discord = {
-		Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
-		Invite = "noinvitelink", -- The Discord invite code, do not include Discord.gg/. E.g. Discord.gg/ ABCD would be ABCD
-		RememberJoins = true -- Set this to false to make them join the Discord every time they load it up
-	},
-
-	KeySystem = false, -- Set this to true to use our key system
-	KeySettings = {
-		Title = "Untitled",
-		Subtitle = "Key System",
-		Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
-		FileName = "Key", -- It is recommended to use something unique, as other scripts using Rayfield may overwrite your key file
-		SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-		GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-		Key = {"Hello"} -- List of keys that the system will accept, can be RAW file links (pastebin, github, etc.) or simple strings ("hello", "key22")
 	}
 })
+
+-- Variáveis Globais de Controle
+_G.DinheiroNoPlayer = 0
+_G.DinheiroNoColetor = 0
+_G.AutoTycoonLIGADO = false
+_G.AutoColectBoxsLIGADO = false
+_G.AtaqueLigado = false
+_G.PlayerSelecionado = ""
+
+-- Função para limpar texto "$135" -> 135
+local function limparValor(texto)
+	local apenasNumeros = texto:gsub("%D", "") 
+	return tonumber(apenasNumeros) or 0
+end
 
 -- ==========================================
 -- TAB PVP
 -- ==========================================
 local PvpTab = Window:CreateTab("PVP Tab", 4483362458)
 
-_G.AtaqueLigado = false
-_G.PlayerSelecionado = ""
-
--- Função para pegar o Humanoid atualizado (evita erro pós-morte)
 local function getHumanoid()
 	local char = player.Character or player.CharacterAdded:Wait()
 	return char:WaitForChild("Humanoid")
 end
 
-local SlidersLbl = PvpTab:CreateLabel("Movement Tweaks")
-
-local MoveSlider = PvpTab:CreateSlider({
+PvpTab:CreateSlider({
 	Name = "Set Walk Speed",
 	Range = {16, 400},
 	Increment = 1,
-	Suffix = "Speed",
 	CurrentValue = 16,
-	Flag = "MoveSlider",
 	Callback = function(Value)
 		local hum = getHumanoid()
 		if hum then hum.WalkSpeed = Value end
 	end,
 })
 
-local JumpSlider = PvpTab:CreateSlider({
-	Name = "Set Jump Force",
-	Range = {50, 300},
-	Increment = 1,
-	Suffix = "Jump",
-	CurrentValue = 50,
-	Flag = "JumpSlider",
-	Callback = function(Value)
-		local hum = getHumanoid()
-		if hum then hum.JumpPower = Value end
-	end,
-})
-
-local AutoKillLbl = PvpTab:CreateLabel("Auto Kill System")
-
-local function getPlayerNames()
-	local names = {}
-	for _, p in ipairs(players:GetPlayers()) do
-		if p ~= player then 
-			table.insert(names, p.Name)
-		end
-	end
-	return names
-end
-
 local DropdownPlayers = PvpTab:CreateDropdown({
 	Name = "Target Player",
-	Options = getPlayerNames(),
+	Options = {},
 	CurrentOption = {"Selecione um Player"},
-	MultipleOptions = false,
 	Callback = function(Option)
 		_G.PlayerSelecionado = typeof(Option) == "table" and Option[1] or Option
 	end,
 })
 
-local function safeRefresh()
-	pcall(function()
-		DropdownPlayers:Refresh(getPlayerNames(), true)
-	end)
+local function refreshPlayers()
+	local names = {}
+	for _, p in ipairs(players:GetPlayers()) do
+		if p ~= player then table.insert(names, p.Name) end
+	end
+	DropdownPlayers:Refresh(names, true)
 end
+players.PlayerAdded:Connect(refreshPlayers)
+players.PlayerRemoving:Connect(refreshPlayers)
+refreshPlayers()
 
-players.PlayerAdded:Connect(safeRefresh)
-players.PlayerRemoving:Connect(safeRefresh)
-
--- Desliga o ataque se VOCÊ morrer
-player.CharacterAdded:Connect(function(character)
-	local hum = character:WaitForChild("Humanoid")
-	hum.Died:Connect(function()
-		_G.AtaqueLigado = false
-	end)
-end)
-
-local ButtonStart = PvpTab:CreateButton({
+PvpTab:CreateButton({
 	Name = "Iniciar Auto Kill",
 	Callback = function()
 		if _G.PlayerSelecionado == "" or _G.PlayerSelecionado == "Selecione um Player" then
-			Rayfield:Notify({Title = "Erro", Content = "Selecione um alvo primeiro!", Duration = 3})
+			Rayfield:Notify({Title = "Erro", Content = "Selecione um alvo!"})
 			return
 		end
-
 		_G.AtaqueLigado = true
-		Rayfield:Notify({Title = "Auto Kill", Content = "Caçando: " .. _G.PlayerSelecionado})
-
 		while _G.AtaqueLigado do
-			local targetPlayer = players:FindFirstChild(_G.PlayerSelecionado)
-			local targetChar = targetPlayer and targetPlayer.Character
-			local targetHumanoid = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
-			local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+			local target = players:FindFirstChild(_G.PlayerSelecionado)
+			local tChar = target and target.Character
+			local tHRP = tChar and tChar:FindFirstChild("HumanoidRootPart")
+			local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 
-			if not targetHumanoid or targetHumanoid.Health <= 0 then
-				Rayfield:Notify({Title = "Missão Concluída", Content = "Alvo morto! Retornando..."})
-				break 
-			end
-
-			local myCharacter = player.Character
-			local myHRP = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
-
-			if myHRP and targetHRP then
-				myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 5, 0)
-
-				local statusEffect = ReplicatedStorage:FindFirstChild("Status_Effect")
-				if statusEffect and statusEffect:FindFirstChild("Event") then
-					statusEffect.Event:Fire("on_heavy", targetChar, myCharacter, 1.5)
-				end
-
-				local library = ReplicatedStorage:FindFirstChild("Library")
-				if library and library:FindFirstChild("Network") then
-					library.Network:FireServer("Damage", targetHumanoid, 40)
-				end
+			if tHRP and myHRP then
+				myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 5, 0)
+				ReplicatedStorage.Library.Network:FireServer("Damage", tChar.Humanoid, 40)
 			end
 			task.wait(0.1)
 		end
-
-		_G.AtaqueLigado = false
-		task.wait(0.3)
-
-		-- Retorno para base
-		local tycoons = workspace:FindFirstChild("Tycoons")
-		local minhaBase = tycoons and tycoons:FindFirstChild(player.Name)
-		if minhaBase and minhaBase:FindFirstChild("Assets") and minhaBase.Assets:FindFirstChild("Lasers") then
-			local laserPart = minhaBase.Assets.Lasers:FindFirstChildWhichIsA("BasePart") or minhaBase.Assets.Lasers.PrimaryPart
-			if laserPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				player.Character.HumanoidRootPart.CFrame = laserPart.CFrame
-				Rayfield:Notify({Title = "Segurança", Content = "De volta à base!"})
-			end
-		end
 	end,
 })
 
-local ButtonStop = PvpTab:CreateButton({
-	Name = "Parar Ataque Manualmente",
-	Callback = function()
-		_G.AtaqueLigado = false
-	end,
-})
-
-local MapLbl = PvpTab:CreateLabel("Map Teleports")
-
-local TpOnCenterButton = PvpTab:CreateButton({
-	Name = "Tp on Center",
-	Callback = function()
-		-- CORREÇÃO: Pegar o Personagem e a HRP dentro do Callback
-		local char = player.Character or player.CharacterAdded:Wait()
-		local myHRP = char and char:FindFirstChild("HumanoidRootPart")
-		local centerPart = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Center")
-
-		if myHRP and centerPart then
-			myHRP.CFrame = centerPart.CFrame + Vector3.new(0, 3, 0) -- Adiciona 3 studs para não bugar no chão
-			Rayfield:Notify({Title = "Teleporte", Content = "Teleportado para o centro!"})
-		else
-			Rayfield:Notify({Title = "Erro", Content = "Local 'Center' não encontrado no Mapa!", Duration = 3})
-		end
-	end,
+PvpTab:CreateButton({
+	Name = "Parar Ataque",
+	Callback = function() _G.AtaqueLigado = false end,
 })
 
 -- ==========================================
@@ -217,68 +113,142 @@ local TpOnCenterButton = PvpTab:CreateButton({
 -- ==========================================
 local FarmTab = Window:CreateTab("Farm Tab", nil)
 
-local AutoTycoonLabel = FarmTab:CreateLabel("Auto Tycoon")
-
 local MoneyPlayerLabel = FarmTab:CreateLabel("Seu Dinheiro: $0")
 local MoneyTycoonLabel = FarmTab:CreateLabel("No Coletor: $0")
 
-_G.DinheiroNoPlayer = 0
-_G.DinheiroNoColetor = 0
-
--- Função para limpar o texto "$135" e retornar número
-local function limparValor(texto)
-	local apenasNumeros = texto:gsub("%D", "") 
-	return tonumber(apenasNumeros) or 0
-end
-
--- Loop de Atualização em Tempo Real
+-- Loop de Atualização de Dinheiro (Monitor)
+-- Função de monitoramento atualizada para garantir que o valor seja SEMPRE um número
 task.spawn(function()
 	while true do
 		pcall(function()
-			-- 1. Obtendo Dinheiro do Jogador (leaderstats)
 			local stats = player:FindFirstChild("leaderstats")
-			local moneyObj = stats and stats:FindFirstChild("Money")
-			if moneyObj then
-				_G.DinheiroNoPlayer = moneyObj.Value
+			if stats and stats:FindFirstChild("Money") then
+				_G.DinheiroNoPlayer = stats.Money.Value
 				MoneyPlayerLabel:Set("Seu Dinheiro: $" .. _G.DinheiroNoPlayer)
 			end
 
-			-- 2. Obtendo Dinheiro do Tycoon (Coletor)
 			local tycoon = workspace.Tycoons:FindFirstChild(player.Name)
-			if tycoon then
-				local textLabel = tycoon.Auxiliary.Collector.Screen.SurfaceGui.TextLabel
-				_G.DinheiroNoColetor = limparValor(textLabel.Text)
-				MoneyTycoonLabel:Set("No Coletor: " .. textLabel.Text)
+			if tycoon and tycoon:FindFirstChild("Auxiliary") then
+				local label = tycoon.Auxiliary.Collector.Screen.SurfaceGui.TextLabel
+				_G.DinheiroNoColetor = limparValor(label.Text)
+				MoneyTycoonLabel:Set("No Coletor: " .. label.Text)
 			end
 		end)
-		task.wait(0.5) -- Atualiza a cada meio segundo para ser eficiente
+		task.wait(0.5)
 	end
 end)
 
-local AutoColectMoney = FarmTab:CreateToggle({
-	Name = "Auto Colect Money",
-	CurrentValue = false,
-	Flag = "AutoColectMoney", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-	Callback = function(Value)
-		local char = player.Character or player.CharacterAdded:Wait()
-		local myHRP = char and char:FindFirstChild("HumanoidRootPart")
-		
-		local ColectorCFrame1 = workspace.Tycoons.Pedro_HLQ.Auxiliary.Collector.Parts.Part.CFrame * CFrame.new(10, 0, 0)
-		local ColectorCFrame2 = workspace.Tycoons.Pedro_HLQ.Auxiliary.Collector.Parts.Part.CFrame
-		
-		while Value do
-			HRP.CFrame = ColectorCFrame1
-			task.wait(0.1)
-			HRP.CFrame = ColectorCFrame2
-			task.wait(0.1)
-		end
-	end,
-})
+local function coletarAte(valorAlvo)
+	local tycoon = workspace.Tycoons:FindFirstChild(player.Name)
+	local collector = tycoon and (tycoon.Auxiliary.Collector.Parts:FindFirstChild("Part") or tycoon.Auxiliary.Collector:FindFirstChild("Essential"))
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 
-local AutoTycoonButton = FarmTab:CreateButton({
-	Name = "Auto Tycoon",
-	Callback = function()
-		
+	-- O script FICA AQUI até você ter o dinheiro ou desligar o toggle
+	while _G.AutoTycoonLIGADO and _G.DinheiroNoPlayer < valorAlvo do
+		if _G.DinheiroNoColetor > 0 and hrp and collector then
+			local posOriginal = hrp.CFrame
+			hrp.CFrame = collector.CFrame
+			task.wait(0.2) -- Tempo para o toque registrar
+			hrp.CFrame = posOriginal
+		end
+		task.wait(2) -- Espera o dinheiro subir no coletor
+	end
+end
+
+local function tentarComprar(nomeBotao, preco)
+	if not _G.AutoTycoonLIGADO then return end
+
+	local tycoon = workspace.Tycoons:FindFirstChild(player.Name)
+	local buttonsFolder = tycoon and tycoon:FindFirstChild("Buttons")
+
+	if not buttonsFolder then return end
+
+	-- Tenta encontrar o botão. Se não existir, o script espera um pouco 
+	-- antes de decidir se pula ou se continua tentando.
+	local botao = buttonsFolder:FindFirstChild(nomeBotao)
+
+	if botao then
+		local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			-- Se não tem dinheiro, fica coletando até ter
+			if _G.DinheiroNoPlayer < preco then
+				coletarAte(preco)
+			end
+
+			-- Realiza a compra
+			if _G.AutoTycoonLIGADO and _G.DinheiroNoPlayer >= preco then
+				local targetPart = botao:IsA("BasePart") and botao or (botao:FindFirstChild("Head") or botao:FindFirstChild("Part") or botao.PrimaryPart)
+				if targetPart then
+					hrp.CFrame = targetPart.CFrame
+					task.wait(0.6) -- Aumentado para garantir que o jogo registre
+				end
+			end
+		end
+	else
+		-- Se o botão não existe, pode ser que você já comprou 
+		-- OU ele ainda não desbloqueou. 
+		-- Vamos dar um pequeno delay para o jogo "respirar"
+		task.wait(0.5)
+	end
+end
+
+FarmTab:CreateToggle({
+	Name = "Auto Tycoon (Full)",
+	CurrentValue = false,
+	Flag = "AutoTycoon",
+	Callback = function(Value)
+		_G.AutoTycoonLIGADO = Value
+		if Value then
+			task.spawn(function()
+				-- SEQUÊNCIA DE COMPRAS
+				tentarComprar("Dropper2Dropper 2", 250)
+				tentarComprar("Dropper3Dropper 3", 1500)
+				tentarComprar("Dropper4Dropper 4", 3000)
+				tentarComprar("Dropper5Dropper 5", 6500)
+
+				tentarComprar("WallsWalls", 150)
+				tentarComprar("LasersDoor Lasers", 550)
+				tentarComprar("Walls 2Walls 2", 500)
+				tentarComprar("Walls 3Walls 3", 1500)
+				tentarComprar("SecondFloorSecond Floor", 8000)
+				tentarComprar("StairsStairs", 1100)
+
+				tentarComprar("Track2Big Track", 1200)
+				tentarComprar("BigDropper1Big Dropper 1", 10000)
+				tentarComprar("BigDropper2Big Dropper 2", 35000)
+				tentarComprar("BigDropper3Big Dropper 3", 80000)
+
+				tentarComprar("Walls 4Walls", 1000)
+				tentarComprar("Walls 5Walls 2", 2500)
+				tentarComprar("Walls 6Walls 3", 3000)
+				tentarComprar("ThirdFloorThird Floor", 200000)
+				tentarComprar("Stairs2Stairs", 11000)
+
+				tentarComprar("Track3Super Track", 12000)
+				tentarComprar("SuperDropperSuper Dropper", 250000)
+
+				tentarComprar("Walls 7Walls 7", 10000)
+				tentarComprar("Walls 8Walls 8", 25000)
+				tentarComprar("Walls 9Walls 9", 30000)
+				tentarComprar("RoofRoof", 40000)
+				tentarComprar("Security GunsSecurity Guns", 400000)
+				tentarComprar("Stairs3Stairs", 12000)
+
+				tentarComprar("PowerPadAbility Pad", 250)
+				tentarComprar("UltraPadBig Ability Pad", 1000)
+				tentarComprar("BoostPadPotion Pad", 10000)
+
+				tentarComprar("PetElemental Pet", 3000)
+				tentarComprar("SuitElemental Body", 12000)
+				tentarComprar("HealHealing Pad", 6000)
+				tentarComprar("Air StrikeAir Strike", 1500000)
+
+				tentarComprar("TurretEnergy Turret", 150000)
+				tentarComprar("MysteryBlockMystery Block", 3500000)
+
+				Rayfield:Notify({Title = "Auto Tycoon", Content = "Finalizado!"})
+			end)
+		end
 	end,
 })
 
@@ -287,16 +257,12 @@ local AutoTycoonButton = FarmTab:CreateButton({
 -- ==========================================
 local MoreTab = Window:CreateTab("More Tab", nil)
 
-local CloseButton = MoreTab:CreateButton({
+MoreTab:CreateButton({
 	Name = "Close Script",
-	Callback = function()
-		Rayfield:Destroy()
-	end,
+	Callback = function() Rayfield:Destroy() end,
 })
 
-local KickButton = MoreTab:CreateButton({
+MoreTab:CreateButton({
 	Name = "Auto Kick",
-	Callback = function()
-		player:Kick("Script finalizado pelo usuário.")
-	end,
+	Callback = function() player:Kick("Finalizado") end,
 })
