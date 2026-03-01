@@ -188,7 +188,7 @@ local function tentarComprar(nomeBotao, preco)
 		-- Se o botão não existe, pode ser que você já comprou 
 		-- OU ele ainda não desbloqueou. 
 		-- Vamos dar um pequeno delay para o jogo "respirar"
-		task.wait(0.5)
+		task.wait(1)
 	end
 end
 
